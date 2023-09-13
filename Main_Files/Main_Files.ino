@@ -1,6 +1,6 @@
 //Startup code for arduino cruise control module Porsche 944
 //see pinout at https://rennlist.com/forums/944-and-944s-forum/1180331-cruise-control-saga.html
-//Written by: John Hoggatt
+//Written by: John Hoggatt- testing
 
 //Libraries
 #include <FreqCount.h>
