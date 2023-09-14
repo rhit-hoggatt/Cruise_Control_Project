@@ -80,7 +80,8 @@ void loop() {
   set_signal_state = digitalRead(set_signal);
   //Serial.print(set_signal_state);
   if(set_signal_state == HIGH){           //checks if set button is pressed
-    set_speed_freq = get_speed();  //read freq for given speed
+    // set_speed_freq = get_speed();  //read freq for given speed
+    set_speed_freq = current_frequency;
     canceled = false;     //disables the cancel variable
     if(set_speed_freq == 0){
       cancel();
@@ -135,7 +136,7 @@ void loop() {
   last100.add(current_frequency);
 
   if(last100.getSize() > 100){
-    last100.remove(0);
+    last100.removeFirst();
   }
 
   // Serial.print(get_speed());
