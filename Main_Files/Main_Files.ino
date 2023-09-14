@@ -35,15 +35,17 @@ int motor_up = 31;
 int motor_down = 33;
 
 //Other Variables
-unsigned long set_speed_freq = 0;
-unsigned long current_speed_freq = 0;
-unsigned long acc_speed_freq = 0;     //used to measure acceleration
+long set_speed_freq = 0;
+long current_speed_freq = 0;
+long acc_speed_freq = 0;     //used to measure acceleration
 double speed_range = 0.015;  //sets acceptable range from set speed before taking action
 double stop_speed_change = 0.005;     //sets range at which speed up/slow down are active
 bool canceled = true;
 bool clutch_pressed = false;
-int previous_method_1_freq = -1;
-int previous_method_2_freq = -1;
+
+double current_frequency = 0;
+double previous_frequency = 0;
+List<double> last100(true);
 
 const int counterPin = 49; 
 FreqPeriodCounter counter(counterPin, micros, 0);
@@ -73,8 +75,8 @@ void setup() {
 }
 
 void loop() {
-  double tempFreq = get_speed();
-  Serial.println(tempFreq);
+  current_frequency = get_speed();
+  Serial.println(current_frequency);
   set_signal_state = digitalRead(set_signal);
   //Serial.print(set_signal_state);
   if(set_signal_state == HIGH){           //checks if set button is pressed
@@ -89,7 +91,8 @@ void loop() {
     //enables servo (not sure how this works yet)
     digitalWrite(clutch_1, HIGH);
     digitalWrite(clutch_2, HIGH);
-    current_speed_freq = get_speed();  //reads current speed freq
+    // current_speed_freq = get_speed();  //reads current speed freq
+    current_speed_freq = current_frequency;
     if(current_speed_freq == 0){
       cancel();
     }
@@ -125,6 +128,14 @@ void loop() {
   if(clutch_signal_state == LOW && clutch_pressed){
     clutch_pressed = false;
     resume();
+  }
+
+  previous_frequency = current_frequency;
+
+  last100.add(current_frequency);
+
+  if(last100.getSize() > 100){
+    last100.remove(0);
   }
 
   // Serial.print(get_speed());
@@ -166,12 +177,12 @@ double get_speed(){
     }
   }
 
-  int um = 0;
+  int avg_sum = 0;
   for(int i = 0; i < freqList.getSize(); i++){
-    um += freqList.getValue(i);
+    avg_sum += freqList.getValue(i);
   }
 
-  int freq = (um / freqList.getSize());
+  int freq = (avg_sum / freqList.getSize());
 
   Serial.print("Method 1: ");
   Serial.println(freq);
@@ -180,13 +191,33 @@ double get_speed(){
 
 }
 
+int speed_slope(){
+  long sum = 0;
+  for(int i = 1; i < last100.getSize(); i++){
+    int check = last100.getValue(i) - last100.getValue(i - 1);
+    sum += check;
+  }
+
+  if(sum > 0) return 1;
+  if(sum < 0) return -1;
+  else return 0;
+
+}
+
 void speed_up() {
 //  delay(500);
-  acc_speed_freq = get_speed();  //reads current speed freq
+  // acc_speed_freq = get_speed();  //reads current speed freq
+  acc_speed_freq = current_frequency;
   if(acc_speed_freq == 0){
     cancel();
   }
   if (acc_speed_freq < (current_speed_freq - (stop_speed_change * current_speed_freq))){
+    digitalWrite(motor_up, HIGH);
+    delay(250);
+    digitalWrite(motor_up, LOW);
+  }
+
+  if(speed_slope() == -1){
     digitalWrite(motor_up, HIGH);
     delay(250);
     digitalWrite(motor_up, LOW);
@@ -196,7 +227,8 @@ void speed_up() {
 
 void slow_down() {
 //  delay(500);
-  acc_speed_freq = get_speed();  //reads current speed freq
+  // acc_speed_freq = get_speed();  //reads current speed freq
+  acc_speed_freq = current_frequency;
   if(acc_speed_freq == 0){
     cancel();
   }
@@ -205,85 +237,13 @@ void slow_down() {
     delay(250);
     digitalWrite(motor_down, LOW);
   }
+
+  if(speed_slope() == 1){
+    digitalWrite(motor_down, HIGH);
+    delay(250);
+    digitalWrite(motor_down, LOW);
+  }
   
-}
-
-int speed_derivative(){ //0 for speed equal, 1 for speed increasing, -1 for speed decreasing
-
-  if(FreqMeasure.available()){
-    List<double> list1(false);
-    List<double> list2(false);
-
-    for(int i = 0; i < 20; i++){
-      double temp = get_speed();
-      list1.addAtIndex(i, temp);
-      delay(10);
-    }
-
-    delay(100);
-
-    for(int i = 0; i < 20; i++){
-      double temp = get_speed();
-      list2.addAtIndex(i, temp);
-      delay(10);
-    }
-
-    double leading = 0;
-    double trailing = 0;
-    double cur_slope = 0;
-    for(int i = 0; i < list1.getSize(); i++){
-      if(i == 0){
-        leading = list1.getValue(i);
-      }
-      else{
-        trailing = leading;
-        leading = list1.getValue(i);
-        if(cur_slope == 0){
-          cur_slope = leading - trailing;
-        }
-        else{
-          cur_slope = (leading - trailing) + cur_slope;
-        }
-      }
-    }
-
-    double leading1 = 0;
-    double trailing1 = 0;
-    double cur_slope1 = 0;
-    for(int i = 0; i < list2.getSize(); i++){
-      if(i == 0){
-        leading1 = list2.getValue(i);
-      }
-      else{
-        trailing1 = leading1;
-        leading1 = list2.getValue(i);
-        if(cur_slope == 0){
-          cur_slope1 = leading1 - trailing1;
-        }
-        else{
-          cur_slope1 = (leading1 - trailing1) + cur_slope1;
-        }
-      }
-    }
-
-    double combines = cur_slope + cur_slope1;
-
-    if(combines == 0){
-      return 0;
-    }
-    else if(combines < 0){
-      return -1;
-    }
-    else{
-      return 1;
-    }
-
-  }
-  else{
-    cancel();
-    return 0;
-  }
-
 }
 
 void resume(){
