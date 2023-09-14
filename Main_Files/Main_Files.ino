@@ -1,6 +1,6 @@
 //Startup code for arduino cruise control module Porsche 944
 //see pinout at https://rennlist.com/forums/944-and-944s-forum/1180331-cruise-control-saga.html
-//Written by: John Hoggatt- testing
+//Written by: John Hoggatt
 
 //Libraries
 #include <FreqCount.h>
@@ -42,6 +42,8 @@ double speed_range = 0.015;  //sets acceptable range from set speed before takin
 double stop_speed_change = 0.005;     //sets range at which speed up/slow down are active
 bool canceled = true;
 bool clutch_pressed = false;
+int previous_method_1_freq = -1;
+int previous_method_2_freq = -1;
 
 const int counterPin = 49; 
 FreqPeriodCounter counter(counterPin, micros, 0);
@@ -71,7 +73,6 @@ void setup() {
 }
 
 void loop() {
-  analogWrite(9, 8);
   double tempFreq = get_speed();
   Serial.println(tempFreq);
   set_signal_state = digitalRead(set_signal);
@@ -126,79 +127,56 @@ void loop() {
     resume();
   }
 
-  Serial.print(get_speed());
-  Serial.print('\n');
+  // Serial.print(get_speed());
+  // Serial.print('\n');
 
 }
 
 double get_speed(){
 
-  unsigned long start_time = 0;
-  unsigned long end_time = 0;
+  List<int> freqList(false);
 
-  int sensorValue = 0;
-  for(int i = 0; i < 100; i++){
-    int tempSensorValue = analogRead(A0);
-    if(tempSensorValue > sensorValue){
-      sensorValue = tempSensorValue;
-      start_time = micros();
+  for(int i = 0; i < 5; i++){
+    long long start_time = millis();
+    long long cur_time = 0;
+    int count = 0;
+    int previous = 0;
+    bool check = true;
+    while(cur_time < start_time + 100){
+      cur_time = millis();
+      int curWave = analogRead(A0);
+      if(curWave < previous && check){
+        float pkVoltage = curWave * (5.0 / 1023.0);
+        if(pkVoltage > 1){
+          count++;
+          check = false;
+        }
+        
+      }
+      else if(curWave > previous){
+        check = true;
+      }
+      previous = curWave;
     }
-    delay(0.02);
+    if(10 * count < 50){
+      freqList.add(0);
+    }
+    else{
+      freqList.add(10 * count);
+    }
   }
 
-  float pkVoltage = sensorValue * (5.0 / 1023.0);
-  if(pkVoltage < 0.25) return 0;
-
-  int sensorValue1 = 0;
-  for(int i = 0; i < 100; i++){
-    int tempSensorValue1 = analogRead(A0);
-    if(tempSensorValue1 > sensorValue1){
-      sensorValue1 = tempSensorValue1;
-      end_time = micros();
-    }
-    delay(0.02);
+  int um = 0;
+  for(int i = 0; i < freqList.getSize(); i++){
+    um += freqList.getValue(i);
   }
 
-  double period = end_time - start_time;
+  int freq = (um / freqList.getSize());
 
-  double period_sec = period / 1000000;
-
-  // Serial.println(period_sec);
-
-  double freq = 1 / period_sec;
+  Serial.print("Method 1: ");
+  Serial.println(freq);
 
   return freq;
-
-
-
-
-
-
-  // unsigned long temp = 0;
-  // int check = 0;
-  // for(int i = 0; i < 50; i++){
-  //   counter.poll();
-  //   int per = counter.period;
-  //   if(per > 10000){
-  //     per = 0;
-  //   }
-  //   if(per != 0){
-  //     temp += per;
-  //     check++;
-  //   }
-  // }
-  // if(check != 0){
-  //   unsigned long fin = (temp / check);
-  //   if(fin > 10000) fin = 0;
-  //   return fin;
-  // }
-  
-  // //if(counter.poll()) Serial << endl << counter.level, counter.period, counter.pulseWidth, counter.pulseWidthLow; 
-  // if(counter.elapsedTime > 50000){
-  //   Serial.println("No signal from input");
-  // }
-
-  // return 0;
 
 }
 
