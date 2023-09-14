@@ -97,10 +97,10 @@ void loop() {
     if(current_speed_freq == 0){
       cancel();
     }
-    if (current_speed_freq > (set_speed_freq + (speed_range * set_speed_freq))){  //if current speed is above a set offset of set speed
+    if (current_speed_freq > (set_speed_freq + (speed_range * set_speed_freq))){  //if current speed is above a predefined offset of set speed
       slow_down();
     }
-    if (current_speed_freq < (set_speed_freq - (speed_range * set_speed_freq))){  //if current speed is below a set offset of set speed
+    if (current_speed_freq < (set_speed_freq - (speed_range * set_speed_freq))){  //if current speed is below a predefined offset of set speed
       speed_up();
     }
   }
@@ -137,6 +137,8 @@ void loop() {
 
   if(last100.getSize() > 100){
     last100.removeFirst();
+    Serial.print("Freq List Size: ");
+    Serial.println(last100.getSize());
   }
 
   // Serial.print(get_speed());
