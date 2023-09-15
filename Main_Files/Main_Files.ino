@@ -15,7 +15,7 @@
 
 //Inputs
 int speed_signal = 8;     //analog signal (sinusoid) requires pin 49 for FreqCount lib (pin 8 for UNO)--- pin 3 for FreqPeriodCounter
-int brake_signal = 13;      //0v when off 12v when brake pressed
+int brake_signal = 15;      //0v when off 12v when brake pressed (A1)
 bool brake_signal_state;
 int cancel_signal = 12;     //12v when off 0v when cancel pressed
 bool cancel_signal_state;
@@ -44,10 +44,20 @@ bool canceled = true;
 bool clutch_pressed = false;
 
 double current_frequency = 0;
+double newCurFreq = 0;
 double previous_frequency = 0;
 List<double> last100(true);
 
 long long total_cycles = 0;
+
+//get_speed_2 globals
+long long freqList_start = 0;
+long long freqList_current = 0;
+int freq_list_count = 0;
+List<int> freqList(false);
+int num = 0;
+int prevNum = 0;
+bool numCheck = true;
 
 const int counterPin = 49; 
 FreqPeriodCounter counter(counterPin, micros, 0);
@@ -56,7 +66,7 @@ void setup() {
   Serial.begin(57600);
   Serial.println("Begin Serial");
   FreqMeasure.begin();
-  pinMode(9, OUTPUT);
+  // pinMode(9, OUTPUT);
   
   //input pinmodes
   pinMode(speed_signal, INPUT);
@@ -66,6 +76,7 @@ void setup() {
   pinMode(set_signal, INPUT);
   pinMode(clutch_signal, INPUT);
   pinMode(A0, INPUT);
+  pinMode(A1, INPUT);
 
   //output pinmodes
   pinMode(clutch_1, OUTPUT);
@@ -77,7 +88,6 @@ void setup() {
 }
 
 void loop() {
-  analogWrite(A0, 200);
   if(total_cycles == 0){
     digitalWrite(clutch_1, LOW);
     digitalWrite(clutch_2, LOW);
@@ -87,8 +97,13 @@ void loop() {
     digitalWrite(motor_down, LOW);
   }
   total_cycles++;
-  current_frequency = get_speed();
-  Serial.println(current_frequency);
+  // current_frequency = get_speed();
+  int tempSpeed = get_speed_2();
+  if(tempSpeed != -1){
+    newCurFreq = tempSpeed;
+  }
+  // Serial.println(newCurFreq);
+  // Serial.println(current_frequency);
   set_signal_state = digitalRead(set_signal);
   //Serial.print(set_signal_state);
   if(set_signal_state == HIGH){           //checks if set button is pressed
@@ -129,6 +144,9 @@ void loop() {
   }
 
   brake_signal_state = digitalRead(brake_signal);
+  // Serial.println(brake_signal_state);
+  // if(brake_signal_state == HIGH) brake_signal_state = LOW;
+  // else brake_signal_state == HIGH;
   if (brake_signal_state == HIGH){    //checks for brake pedal being pressed
     cancel(133);
   }
@@ -146,7 +164,9 @@ void loop() {
 
   previous_frequency = current_frequency;
 
-  last100.add(current_frequency);
+  if(current_frequency != -1){
+    last100.add(current_frequency);
+  }
 
   if(last100.getSize() > 100){
     last100.removeFirst();
@@ -156,7 +176,7 @@ void loop() {
 
   // Serial.print(get_speed());
   // Serial.print('\n');
-
+  // flip_values();
 }
 
 double get_speed(){
@@ -204,9 +224,78 @@ double get_speed(){
   Serial.println(freq);
 
   if(freq == 0){
-    return 0;
+    return 1;
   }
   return freq;
+
+}
+
+double get_speed_2(){
+  int curVal = helper();
+  if(curVal != -1){
+    if(10 * curVal < 50){
+      freqList.add(0);
+    }
+    else{
+      freqList.add(curVal);
+    }
+  }
+
+  if(freqList.getSize() >= 5){
+    int avg_sum = 0;
+    for(int i = 0; i < freqList.getSize(); i++){
+      avg_sum += freqList.getValue(i);
+    }
+
+    int freq = (avg_sum / freqList.getSize());
+
+    Serial.print("Method 2: ");
+    Serial.println(freq);
+
+    freqList.removeAll();
+
+    if(freq == 0){
+      return 1;
+    }
+    // Serial.print("Method 2: ");
+    // Serial.println(freq);
+    return freq;
+  }
+
+  return -1;
+}
+
+int helper(){
+
+  if(freq_list_count == 0){
+    freqList_start = millis();
+    freq_list_count++;
+  }
+
+  freqList_current = millis();
+  if(freqList_current > freqList_start + 100){
+    int cur = 10 * num;
+    num = 0;
+    prevNum = 0;
+    numCheck = true;
+    freq_list_count = 0;
+    return cur;
+  }
+  else{
+    int curWave = analogRead(A0);
+    if(curWave < prevNum && numCheck){
+      float pkVoltage = curWave * (5.0 / 1023.0);
+      if(pkVoltage > 0){
+        num++;
+        numCheck = false;
+      }
+    }
+    else if(curWave > prevNum){
+      numCheck = true;
+    }
+  }
+
+  return -1;
 
 }
 
@@ -283,4 +372,54 @@ void cancel(int lineNum){
   digitalWrite(motor_up, LOW);
   digitalWrite(motor_down, LOW);
   canceled = true;
+}
+
+void flip_values(){
+  bool state1 = digitalRead(clutch_1);
+  if(state1 == 1){
+    digitalWrite(clutch_1, LOW);
+  }
+  else{
+    digitalWrite(clutch_1, HIGH);
+  }
+
+  bool state2 = digitalRead(clutch_2);
+  if(state2 == 1){
+    digitalWrite(clutch_2, LOW);
+  }
+  else{
+    digitalWrite(clutch_2, HIGH);
+  }
+
+  bool state3 = digitalRead(pot_1);
+  if(state3 == 1){
+    digitalWrite(pot_1, LOW);
+  }
+  else{
+    digitalWrite(pot_1, HIGH);
+  }
+
+  bool state4 = digitalRead(pot_1);
+  if(state4 == 1){
+    digitalWrite(pot_2, LOW);
+  }
+  else{
+    digitalWrite(pot_2, HIGH);
+  }
+
+  bool state5 = digitalRead(motor_up);
+  if(state5 == 1){
+    digitalWrite(motor_up, LOW);
+  }
+  else{
+    digitalWrite(motor_up, HIGH);
+  }
+
+  bool state6 = digitalRead(motor_up);
+  if(state6 == 1){
+    digitalWrite(motor_down, LOW);
+  }
+  else{
+    digitalWrite(motor_down, HIGH);
+  }
 }
