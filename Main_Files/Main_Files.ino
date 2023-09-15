@@ -14,25 +14,25 @@
 #include <FreqCount.h>
 
 //Inputs
-int speed_signal = 49;     //analog signal (sinusoid) requires pin 49 for FreqCount lib (pin 8 for UNO)--- pin 3 for FreqPeriodCounter
-int brake_signal = 24;      //0v when off 12v when brake pressed
+int speed_signal = 8;     //analog signal (sinusoid) requires pin 49 for FreqCount lib (pin 8 for UNO)--- pin 3 for FreqPeriodCounter
+int brake_signal = 13;      //0v when off 12v when brake pressed
 bool brake_signal_state;
-int cancel_signal = 26;     //12v when off 0v when cancel pressed
+int cancel_signal = 12;     //12v when off 0v when cancel pressed
 bool cancel_signal_state;
-int resume_signal = 28;     //0v until 12v when resume pressed
+int resume_signal = 11;     //0v until 12v when resume pressed
 bool resume_signal_state;
-int set_signal = 30;        //0v until 12v when pressed
+int set_signal = 10;        //0v until 12v when pressed
 bool set_signal_state;
-int clutch_signal = 32;     //0v until 12v when clutch pressed
+int clutch_signal = 9;     //0v until 12v when clutch pressed
 bool clutch_signal_state;
 
 //Outputs (not sure how these work yet)
-int clutch_1 = 23;
-int clutch_2 = 25;
-int pot_1 = 27;
-int pot_2 = 29;
-int motor_up = 31;
-int motor_down = 33;
+int clutch_1 = 7;
+int clutch_2 = 6;
+int pot_1 = 5;
+int pot_2 = 4;
+int motor_up = 3;
+int motor_down = 2;
 
 //Other Variables
 long set_speed_freq = 0;
@@ -46,6 +46,8 @@ bool clutch_pressed = false;
 double current_frequency = 0;
 double previous_frequency = 0;
 List<double> last100(true);
+
+long long total_cycles = 0;
 
 const int counterPin = 49; 
 FreqPeriodCounter counter(counterPin, micros, 0);
@@ -75,6 +77,16 @@ void setup() {
 }
 
 void loop() {
+  analogWrite(A0, 200);
+  if(total_cycles == 0){
+    digitalWrite(clutch_1, LOW);
+    digitalWrite(clutch_2, LOW);
+    digitalWrite(pot_1, LOW);
+    digitalWrite(pot_2, LOW);
+    digitalWrite(motor_up, LOW);
+    digitalWrite(motor_down, LOW);
+  }
+  total_cycles++;
   current_frequency = get_speed();
   Serial.println(current_frequency);
   set_signal_state = digitalRead(set_signal);
@@ -84,7 +96,7 @@ void loop() {
     set_speed_freq = current_frequency;
     canceled = false;     //disables the cancel variable
     if(set_speed_freq == 0){
-      cancel();
+      cancel(99);
     }
   }
 
@@ -93,9 +105,10 @@ void loop() {
     digitalWrite(clutch_1, HIGH);
     digitalWrite(clutch_2, HIGH);
     // current_speed_freq = get_speed();  //reads current speed freq
+    // Serial.println("running");
     current_speed_freq = current_frequency;
     if(current_speed_freq == 0){
-      cancel();
+      cancel(111);
     }
     if (current_speed_freq > (set_speed_freq + (speed_range * set_speed_freq))){  //if current speed is above a predefined offset of set speed
       slow_down();
@@ -107,7 +120,7 @@ void loop() {
 
   cancel_signal_state = digitalRead(cancel_signal);
   if (cancel_signal_state == LOW){    //checks for cancel button being pressed
-    cancel();
+    cancel(123);
   }
 
   resume_signal_state = digitalRead(resume_signal);
@@ -117,12 +130,12 @@ void loop() {
 
   brake_signal_state = digitalRead(brake_signal);
   if (brake_signal_state == HIGH){    //checks for brake pedal being pressed
-    cancel();
+    cancel(133);
   }
 
   clutch_signal_state = digitalRead(clutch_signal);
   if (clutch_signal_state == HIGH){     //checks for clutch pedal being pressed
-    cancel();
+    cancel(138);
     clutch_pressed = true;
   }
 
@@ -190,15 +203,20 @@ double get_speed(){
   Serial.print("Method 1: ");
   Serial.println(freq);
 
+  if(freq == 0){
+    return 0;
+  }
   return freq;
 
 }
 
 int speed_slope(){
   long sum = 0;
-  for(int i = 1; i < last100.getSize(); i++){
-    int check = last100.getValue(i) - last100.getValue(i - 1);
-    sum += check;
+  if(last100.getSize() > 2){
+    for(int i = last100.getSize() - 2; i < last100.getSize(); i++){
+      int check = last100.getValue(i) - last100.getValue(i - 1);
+      sum += check;
+    }
   }
 
   if(sum > 0) return 1;
@@ -212,7 +230,7 @@ void speed_up() {
   // acc_speed_freq = get_speed();  //reads current speed freq
   acc_speed_freq = current_frequency;
   if(acc_speed_freq == 0){
-    cancel();
+    cancel(230);
   }
   if (acc_speed_freq < (current_speed_freq - (stop_speed_change * current_speed_freq))){
     digitalWrite(motor_up, HIGH);
@@ -233,7 +251,7 @@ void slow_down() {
   // acc_speed_freq = get_speed();  //reads current speed freq
   acc_speed_freq = current_frequency;
   if(acc_speed_freq == 0){
-    cancel();
+    cancel(251);
   }
   if (acc_speed_freq > (current_speed_freq + (stop_speed_change * current_speed_freq))){
     digitalWrite(motor_down, HIGH);
@@ -255,7 +273,9 @@ void resume(){
   canceled = false;
 }
 
-void cancel(){
+void cancel(int lineNum){
+  Serial.print("Canceling: Line ");
+  Serial.println(lineNum);
   digitalWrite(clutch_1, LOW);
   digitalWrite(clutch_2, LOW);
   digitalWrite(pot_1, LOW);
