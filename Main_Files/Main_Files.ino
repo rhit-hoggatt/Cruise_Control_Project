@@ -1,6 +1,6 @@
 //Startup code for arduino cruise control module Porsche 944
 //see pinout at https://rennlist.com/forums/944-and-944s-forum/1180331-cruise-control-saga.html
-//Written by: John Hoggatt
+//Written by: John H.
 
 //Libraries
 #include <FreqCount.h>
@@ -17,7 +17,7 @@
 int speed_signal = 8;     //analog signal (sinusoid) requires pin 49 for FreqCount lib (pin 8 for UNO)--- pin 3 for FreqPeriodCounter
 int brake_signal = 15;      //0v when off 12v when brake pressed (A1)
 bool brake_signal_state;
-int cancel_signal = 12;     //12v when off 0v when cancel pressed
+int cancel_signal = 19;     //12v when off 0v when cancel pressed
 bool cancel_signal_state;
 int resume_signal = 11;     //0v until 12v when resume pressed
 bool resume_signal_state;
@@ -48,7 +48,7 @@ double newCurFreq = 0;
 double previous_frequency = 0;
 List<double> last100(true);
 
-long long total_cycles = 0;
+long total_cycles = 0;
 
 //get_speed_2 globals
 long long freqList_start = 0;
@@ -99,6 +99,8 @@ void loop() {
   total_cycles++;
   // current_frequency = get_speed();
   int tempSpeed = get_speed_2();
+  // int tempSpeed = -1;
+  // Serial.println(total_cycles);
   if(tempSpeed != -1){
     newCurFreq = tempSpeed;
   }
@@ -134,6 +136,8 @@ void loop() {
   }
 
   cancel_signal_state = digitalRead(cancel_signal);
+  Serial.print("Cancel state: ");
+  Serial.println(cancel_signal_state);
   if (cancel_signal_state == LOW){    //checks for cancel button being pressed
     cancel(123);
   }
@@ -164,15 +168,15 @@ void loop() {
 
   previous_frequency = current_frequency;
 
-  if(current_frequency != -1){
-    last100.add(current_frequency);
-  }
+  // if(current_frequency != -1){
+  //   last100.add(current_frequency);
+  // }
 
-  if(last100.getSize() > 100){
-    last100.removeFirst();
-    Serial.print("Freq List Size: ");
-    Serial.println(last100.getSize());
-  }
+  // if(last100.getSize() > 10){
+  //   last100.removeFirst();
+  //   Serial.print("Freq List Size: ");
+  //   Serial.println(last100.getSize());
+  // }
 
   // Serial.print(get_speed());
   // Serial.print('\n');
@@ -309,7 +313,7 @@ int speed_slope(){
   }
 
   if(sum > 0) return 1;
-  if(sum < 0) return -1;
+  else if(sum < 0) return -1;
   else return 0;
 
 }
