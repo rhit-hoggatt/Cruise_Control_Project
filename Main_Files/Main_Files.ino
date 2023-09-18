@@ -99,13 +99,11 @@ void loop() {
   total_cycles++;
   // current_frequency = get_speed();
   int tempSpeed = get_speed_2();
-  // int tempSpeed = -1;
-  // Serial.println(total_cycles);
+  current_frequency = tempSpeed;
+
   if(tempSpeed != -1){
     newCurFreq = tempSpeed;
   }
-  // Serial.println(newCurFreq);
-  // Serial.println(current_frequency);
   set_signal_state = digitalRead(set_signal);
   //Serial.print(set_signal_state);
   if(set_signal_state == HIGH){           //checks if set button is pressed
@@ -121,8 +119,8 @@ void loop() {
     //enables servo (not sure how this works yet)
     digitalWrite(clutch_1, HIGH);
     digitalWrite(clutch_2, HIGH);
-    // current_speed_freq = get_speed();  //reads current speed freq
-    // Serial.println("running");
+
+    Serial.println("running");
     current_speed_freq = current_frequency;
     if(current_speed_freq == 0){
       cancel(111);
@@ -148,9 +146,6 @@ void loop() {
   }
 
   brake_signal_state = digitalRead(brake_signal);
-  // Serial.println(brake_signal_state);
-  // if(brake_signal_state == HIGH) brake_signal_state = LOW;
-  // else brake_signal_state == HIGH;
   if (brake_signal_state == HIGH){    //checks for brake pedal being pressed
     cancel(133);
   }
@@ -168,19 +163,15 @@ void loop() {
 
   previous_frequency = current_frequency;
 
-  // if(current_frequency != -1){
-  //   last100.add(current_frequency);
-  // }
+  if(current_frequency != -1){
+    last100.add(current_frequency);
+  }
 
-  // if(last100.getSize() > 10){
-  //   last100.removeFirst();
-  //   Serial.print("Freq List Size: ");
-  //   Serial.println(last100.getSize());
-  // }
-
-  // Serial.print(get_speed());
-  // Serial.print('\n');
-  // flip_values();
+  if(last100.getSize() > 10){
+    last100.removeFirst();
+    Serial.print("Freq List Size: ");
+    Serial.println(last100.getSize());
+  }
 }
 
 double get_speed(){
