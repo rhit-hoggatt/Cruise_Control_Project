@@ -15,9 +15,9 @@
 
 //Inputs
 int speed_signal = 8;     //analog signal (sinusoid) requires pin 49 for FreqCount lib (pin 8 for UNO)--- pin 3 for FreqPeriodCounter
-int brake_signal = 14;      //0v when off 12v when brake pressed (A1)
+int brake_signal = 15;      //0v when off 12v when brake pressed (A1)
 bool brake_signal_state;
-int cancel_signal = 15;     //12v when off 0v when cancel pressed (A2)
+int cancel_signal = 16;     //12v when off 0v when cancel pressed (A2)
 bool cancel_signal_state;
 int resume_signal = 11;     //0v until 12v when resume pressed
 bool resume_signal_state;
@@ -27,8 +27,8 @@ int clutch_signal = 9;     //0v until 12v when clutch pressed
 bool clutch_signal_state;
 
 //Outputs (not sure how these work yet)
-int clutch_1 = 7;
-int clutch_2 = 6;
+int clutch_1 = 7;   //First of two safety magnetic clutches in servo
+int clutch_2 = 6;   //Second of two saferty magnetic clutches in servo
 int pot_1 = 5;
 int pot_2 = 4;
 int motor_up = 3;
@@ -41,8 +41,9 @@ long acc_speed_freq = 0;     //used to measure acceleration
 double speed_range = 0.015;  //sets acceptable range from set speed before taking action
 double stop_speed_change = 0.005;     //sets range at which speed up/slow down are active
 bool canceled = true;
-bool clutch_pressed = false;
+bool clutch_pressed = false;  //Used in resume function for when clutch is no longer pressed
 
+//list of previous speeds to reference
 double current_frequency = 0;
 double newCurFreq = 0;
 double previous_frequency = 0;
@@ -59,6 +60,7 @@ int num = 0;
 int prevNum = 0;
 bool numCheck = true;
 
+//speed up and slow down globals to eliminate using delay()
 bool SO = false;
 bool SD = false;
 long long speed_up_initial = 0;
@@ -66,9 +68,11 @@ long long speed_up_current = 0;
 long long slow_down_initial = 0;
 long long slow_down_current = 0;
 
+//just for testing
 const int counterPin = 49; 
 FreqPeriodCounter counter(counterPin, micros, 0);
 
+//system time globals for reference
 long long current_system_time = 0;
 long long prev_system_time = 0;
 
@@ -87,6 +91,7 @@ void setup() {
   pinMode(clutch_signal, INPUT);
   pinMode(A0, INPUT);
   pinMode(A1, INPUT);
+  pinMode(A2, INPUT);
 
   //output pinmodes
   pinMode(clutch_1, OUTPUT);
@@ -98,11 +103,14 @@ void setup() {
 }
 
 void loop(){
-  current_system_time = millis();
+  current_system_time = millis(); //number of milliseconds since system started
   Serial.print("Loop time: ");
   Serial.println((double) current_system_time - (double) prev_system_time);  //check "heartbeat" i.e. is how fast is loop running
 
-  int tempSpeed = get_speed_2();
+  int tempSpeed = get_speed_2();  //Gets current freq if avaliable
+  if(tempSpeed != -1){  //Checks if current speed was avaliable
+    current_frequency = tempSpeed;
+  }
 
   set_signal_state = digitalRead(set_signal);
   if(set_signal_state == HIGH){           //checks if set button is pressed
@@ -156,23 +164,23 @@ void loop(){
     resume();
   }
 
-  if(last100.getSize() > 10){
+  if(last100.getSize() > 100){  //ensures list of previous speed values doesnt get too large
     last100.removeFirst();
     Serial.print("Freq List Size: ");
     Serial.println(last100.getSize());
   }
 
-  prev_system_time = current_system_time;
-  previous_frequency = current_frequency;
+  prev_system_time = current_system_time; //system time reference
+  previous_frequency = current_frequency; //changes previous frequency value for next loop
 }
 
-void resume(){
+void resume(){    //re-enables clutches (Havent tested this yet)
   digitalWrite(clutch_1, HIGH);
   digitalWrite(clutch_2, HIGH);
   canceled = false;
 }
 
-void cancel(int lineNum){
+void cancel(int lineNum){ //Disables all outputs and sets canceled to true
   Serial.print("Canceling: Line ");
   Serial.println(lineNum);
   digitalWrite(clutch_1, LOW);
@@ -217,18 +225,18 @@ void slow_down(){
   }
 }
 
-double get_speed_2(){
-  int curVal = helper();
-  if(curVal != -1){
-    if(10 * curVal < 50){
-      freqList.add(0);
+double get_speed_2(){ //returns average of 5 frequency readings over time
+  int curVal = helper();  //calls helper method to get one freq to be averaged
+  if(curVal != -1){ //if curVal is avaliable
+    if(10 * curVal < 50){ //arbitrary offset as low freqs are not reliable to read
+      freqList.add(0); 
     }
-    else{
+    else{ //assuming freq is valid
       freqList.add(curVal);
     }
   }
 
-  if(freqList.getSize() >= 5){
+  if(freqList.getSize() >= 5){  //averages values when list size gets to 5
     int avg_sum = 0;
     for(int i = 0; i < freqList.getSize(); i++){
       avg_sum += freqList.getValue(i);
@@ -241,26 +249,26 @@ double get_speed_2(){
 
     freqList.removeAll();
 
-    if(freq == 0){
-      return 1;
+    if(freq == 0){  //this is for testing- ignore
+      return 0;
     }
     // Serial.print("Method 2: ");
     // Serial.println(freq);
     return freq;
   }
 
-  return -1;
+  return -1;  //Returns -1 to show that freq reading not current avaliable
 }
 
-int helper(){
+int helper(){   //get speed helper method to return current freq (not averaged)
 
-  if(freq_list_count == 0){
+  if(freq_list_count == 0){ //checks if this is the first run of this "cycle"
     freqList_start = millis();
-    freq_list_count++;
+    freq_list_count++;  //makes this no longer the first run
   }
 
   freqList_current = millis();
-  if(freqList_current > freqList_start + 100){
+  if(freqList_current > freqList_start + 100){  //only returns value after 100ms of reading
     int cur = 10 * num;
     num = 0;
     prevNum = 0;
@@ -286,7 +294,7 @@ int helper(){
 
 }
 
-int speed_slope(){
+int speed_slope(){  //not currently used but useful information
   long sum = 0;
   if(last100.getSize() > 2){
     for(int i = last100.getSize() - 2; i < last100.getSize(); i++){
@@ -295,8 +303,8 @@ int speed_slope(){
     }
   }
 
-  if(sum > 0) return 1;
-  else if(sum < 0) return -1;
-  else return 0;
+  if(sum > 0) return 1; //returns 1 if positive slope
+  else if(sum < 0) return -1; //returns -1 is negative slope
+  else return 0;  //zero is slope is zero
 
 }
