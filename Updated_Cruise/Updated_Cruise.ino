@@ -2,6 +2,8 @@
 //see pinout at https://rennlist.com/forums/944-and-944s-forum/1180331-cruise-control-saga.html
 //Written by: John H.
 
+//USE AT YOUR OWN RISK
+
 //Libraries
 #include <FreqCount.h>
 #include <FreqMeasure.h>
