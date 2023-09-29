@@ -11,8 +11,8 @@ class AList {
         int size;
         
     public:
-        AList(T type);
-        bool add(int value);
+        AList();
+        bool add(T value);
         T get(int index);
         bool remove(int index);
         bool removeLast();
