@@ -11,9 +11,8 @@
 #include <List.hpp>
 #include <Math.h>
 #include <FreqPeriodCounter.h>
-// #include <Albert.h>
-// #include <Streaming.h>
 #include <FreqCount.h>
+#include <AList.h>
 
 //Inputs
 int speed_signal = 8;     //analog signal (sinusoid) requires pin 49 for FreqCount lib (pin 8 for UNO)--- pin 3 for FreqPeriodCounter
@@ -69,6 +68,8 @@ long long speed_up_initial = 0;
 long long speed_up_current = 0;
 long long slow_down_initial = 0;
 long long slow_down_current = 0;
+
+// AList AListTest = new AList();
 
 //just for testing
 const int counterPin = 49; 

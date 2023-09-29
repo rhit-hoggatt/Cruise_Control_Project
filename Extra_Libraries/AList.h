@@ -5,15 +5,15 @@
 
 // #include <Arduino.h>
 
-template <typename T>
+// template <typename T>
 class AList {
     private:
         int size;
         
     public:
         AList();
-        bool add(T value);
-        T get(int index);
+        bool add(int value);
+        int get(int index);
         bool remove(int index);
         bool removeLast();
         bool removeAll();
