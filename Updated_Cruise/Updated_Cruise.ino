@@ -74,6 +74,9 @@ long long slow_down_current = 0;
 //just for testing
 const int counterPin = 49; 
 FreqPeriodCounter counter(counterPin, micros, 0);
+int speedSlopeAvg = -1;
+float speedSlopeSum = 0;
+
 
 //system time globals for reference
 long long current_system_time = 0;
@@ -167,7 +170,8 @@ void loop(){
     resume();
   }
 
-  if(last100.getSize() > 100){  //ensures list of previous speed values doesnt get too large
+  if(last100.getSize() > 1000){  //ensures list of previous speed values doesnt get too large
+    speedSlopeSum = last100.getValue(0);
     last100.removeFirst();
     Serial.print("Freq List Size: ");
     Serial.println(last100.getSize());
@@ -299,11 +303,18 @@ int helper(){   //get speed helper method to return current freq (not averaged)
 
 int speed_slope(){  //not currently used but useful information
   long sum = 0;
-  if(last100.getSize() > 2){
-    for(int i = last100.getSize() - 2; i < last100.getSize(); i++){
-      int check = last100.getValue(i) - last100.getValue(i - 1);
-      sum += check;
+  if(speedSlopeAvg == -1){
+    if(last100.getSize() > 2){
+      for(int i = last100.getSize() - 2; i < last100.getSize(); i++){
+        int check = last100.getValue(i) - last100.getValue(i - 1);
+        sum += check;
+      }
     }
+    speedSlopeAvg = sum;
+  }
+  else{
+    speedSlopeAvg -= speedSlopeSum;
+    speedSlopeAvg += last100.getValue(last100.getSize() - 1);
   }
 
   if(sum > 0) return 1; //returns 1 if positive slope
