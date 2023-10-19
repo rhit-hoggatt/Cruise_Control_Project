@@ -7,12 +7,7 @@
 //Libraries
 #include <FreqCount.h>
 #include <FreqMeasure.h>
-#include <KickMath.h>
 #include <List.hpp>
-#include <Math.h>
-#include <FreqPeriodCounter.h>
-#include <FreqCount.h>
-#include <AList.h>
 
 //Inputs
 int speed_signal = 8;     //analog signal (sinusoid) requires pin 49 for FreqCount lib (pin 8 for UNO)--- pin 3 for FreqPeriodCounter
@@ -73,7 +68,7 @@ long long slow_down_current = 0;
 
 //just for testing
 const int counterPin = 49; 
-FreqPeriodCounter counter(counterPin, micros, 0);
+// FreqPeriodCounter counter(counterPin, micros, 0);
 int speedSlopeAvg = -1;
 float speedSlopeSum = 0;
 
@@ -236,7 +231,7 @@ double get_speed_2(){ //returns average of 5 frequency readings over time
   int curVal = helper();  //calls helper method to get one freq to be averaged
   if(curVal != -1){ //if curVal is avaliable
     if(10 * curVal < 50){ //arbitrary offset as low freqs are not reliable to read
-      freqList.add(0); 
+      freqList.add(0);  //considers frequency to be essentially zero
     }
     else{ //assuming freq is valid
       freqList.add(curVal);
@@ -261,7 +256,7 @@ double get_speed_2(){ //returns average of 5 frequency readings over time
     }
     // Serial.print("Method 2: ");
     // Serial.println(freq);
-    return freq;
+    return freq;  //returns final averaged value
   }
 
   return -1;  //Returns -1 to show that freq reading not current avaliable
