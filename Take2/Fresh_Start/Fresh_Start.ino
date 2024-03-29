@@ -1,4 +1,7 @@
 
+#include <FreqMeasure.h>
+#include <PID_v1.h>
+
 //Inputs
 int speed_signal = 8;     //analog signal (sinusoid) requires pin 49 for FreqCount lib (pin 8 for UNO)--- pin 3 for FreqPeriodCounter
 int brake_signal = 15;      //0v when off 12v when brake pressed (A1)
@@ -24,20 +27,36 @@ int motor_down = 2;
 double set_speed_freq = 0;
 double cur_speed_freq = 0;
 
-//timing information for each loop
-long start_sys_time = 0;
-long loop_start_time = 0;
-long speedUpRef = 0;
-long slowDownRef = 0;
-
 //other
 bool canceled = true; //system "power switch"
 bool clutch_pressed = false;
 double speed_range = 0.02;
 
+//Define Variables we'll be connecting to
+double Setpoint, Input, Output;
+
+//Define the aggressive and conservative Tuning Parameters for PID
+double aggKp=4, aggKi=0.2, aggKd=1;
+double consKp=1, consKi=0.05, consKd=0.25;
+int WindowSize = 1000;
+unsigned long windowStartTime;
+#define RELAY_UP 3
+#define RELAY_DOWN 2
+
+PID myPID(&Input, &Output, &Setpoint, consKp, consKi, consKd, DIRECT);
+
 void setup() {
   Serial.begin(57600);
   Serial.println("Started Setup");
+
+  //Frequency measuring setup
+  FreqMeasure.begin();
+
+  //PID setup
+  windowStartTime = millis();
+  Input = cur_speed_freq;
+  //tell the PID to range between 0 and the full window size
+  myPID.SetOutputLimits(0, WindowSize);
 
   //input pinmodes
   pinMode(speed_signal, INPUT);
@@ -61,26 +80,33 @@ void setup() {
 }
 
 void loop() {
-  long current_sys_time = millis();
-
   set_signal_state = digitalRead(set_signal);
   if(set_signal_state == HIGH){           //checks if set button is pressed
     Serial.println("Set Button Pressed");
     set_speed_freq = getCurrentFreq();  //read freq for given speed
     canceled = false;     //disables the cancel variable
+    Setpoint = set_speed_freq;
+    cur_speed_freq = set_speed_freq;
+    myPID.SetMode(AUTOMATIC);
   }
 
-    if (set_speed_freq != 0 && canceled == false) {     //checks to see if cruise has been set
+  if(set_speed_freq != 0 && canceled == false) {     //checks to see if cruise has been set
     //enables servo (not sure how this works yet)
     digitalWrite(clutch_1, HIGH);
     digitalWrite(clutch_2, HIGH);
     Serial.println("Running");
-    double current_speed_freq = getCurrentFreq();
-    if (current_speed_freq > (set_speed_freq + (speed_range * set_speed_freq))){  //if current speed is above a predefined offset of set speed
-      slow_down();
+    cur_speed_freq = getCurrentFreq();
+    Input = cur_speed_freq;
+
+    if (cur_speed_freq > (set_speed_freq + (speed_range * set_speed_freq))){  //if current speed is above a predefined offset of set speed
+      //slow_down();
+      myPID.SetTunings(aggKp, aggKi, aggKd);
     }
-    if (current_speed_freq < (set_speed_freq - (speed_range * set_speed_freq))){  //if current speed is below a predefined offset of set speed
-      speed_up();
+    else if (cur_speed_freq < (set_speed_freq - (speed_range * set_speed_freq))){  //if current speed is below a predefined offset of set speed
+      //speed_up();
+      myPID.SetTunings(aggKp, aggKi, aggKd);
+    } else{
+      myPID.SetTunings(consKp, consKi, consKd);
     }
   }
 
@@ -114,11 +140,50 @@ void loop() {
     clutch_pressed = false;
     resume();
   }
+
+  if(myPID.GetMode() == AUTOMATIC){
+    myPID.Compute();
+
+    if(millis() - windowStartTime > WindowSize){
+      windowStartTime += WindowSize;
+    }
+    if(Output < millis() - windowStartTime){
+      if(cur_speed_freq >= set_speed_freq){
+        digitalWrite(RELAY_DOWN, HIGH);
+        digitalWrite(RELAY_UP, LOW);
+      } else{
+        digitalWrite(RELAY_DOWN, LOW);
+        digitalWrite(RELAY_UP, HIGH);
+      }
+    }
+
+  }
+}
+
+double getCurrentFreq(){
+  int sum = 0;
+  int count = 0;
+  unsigned long refTime = millis();
+  unsigned long nwTime = 0;
+  while(nwTime < refTime + 800){
+    if(FreqMeasure.available()){
+      while(count < 30){
+        sum += FreqMeasure.read();
+        count++;
+        delay(5);
+      }
+      return FreqMeasure.countToFrequency(sum / count);
+    } else{
+      nwTime = millis();
+    }
+  }
+  return 0;
 }
 
 void resume(){    //re-enables clutches (Havent tested this yet)
   digitalWrite(clutch_1, HIGH);
   digitalWrite(clutch_2, HIGH);
+  myPID.SetMode(AUTOMATIC);
   canceled = false;
 }
 
@@ -131,31 +196,18 @@ void cancel(int lineNum){ //Disables all outputs and sets canceled to true
   digitalWrite(pot_2, LOW);
   digitalWrite(motor_up, LOW);
   digitalWrite(motor_down, LOW);
+  myPID.SetMode(0);
   canceled = true;
 }
 
-void speed_up(){
-  long curTime = millis();
-  if(curTime > speedUpRef + 50){
-    speedUpRef = curTime;
-    digitalWrite(motor_up, HIGH);
-  }
-  digitalWrite(motor_up, HIGH);
-  delay(50);
-  digitalWrite(motor_up, LOW);
-}
+// void speed_up(){
+//   digitalWrite(motor_up, HIGH);
+//   delay(50);
+//   digitalWrite(motor_up, LOW);
+// }
 
-void slow_down(){
-  digitalWrite(motor_down, HIGH);
-  delay(50);
-  digitalWrite(motor_down, LOW);
-}
-
-double getCurrentFreq(){
-  #define SAMPLES 4096
-  double curFreq = 0;
-  for(int j = 0; j < SAMPLES; j++){
-    curFreq+= 500000/pulseIn(speed_signal, HIGH, 250000);
-  }
-  return curFreq / SAMPLES;
-}
+// void slow_down(){
+//   digitalWrite(motor_down, HIGH);
+//   delay(50);
+//   digitalWrite(motor_down, LOW);
+// }
