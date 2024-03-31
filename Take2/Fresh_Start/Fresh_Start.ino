@@ -16,12 +16,12 @@ int clutch_signal = 9;     //0v until 12v when clutch pressed
 bool clutch_signal_state;
 
 //Outputs (not sure how these work yet)
-int clutch_1 = 7;   //First of two safety magnetic clutches in servo
-int clutch_2 = 6;   //Second of two saferty magnetic clutches in servo
-int pot_1 = 5;
-int pot_2 = 4;
-int motor_up = 3;
-int motor_down = 2;
+int clutch_1 = 23;   //First of two safety magnetic clutches in servo
+int clutch_2 = 25;   //Second of two saferty magnetic clutches in servo
+int pot_1 = 27;
+int pot_2 = 29;
+int motor_up = 31;
+int motor_down = 33;
 
 //speed information in hz(?)
 double set_speed_freq = 0;
@@ -97,6 +97,7 @@ void loop() {
     Serial.println("Running");
     cur_speed_freq = getCurrentFreq();
     Input = cur_speed_freq;
+    Serial.println(Input);
 
     if (cur_speed_freq > (set_speed_freq + (speed_range * set_speed_freq))){  //if current speed is above a predefined offset of set speed
       //slow_down();
@@ -148,36 +149,60 @@ void loop() {
       windowStartTime += WindowSize;
     }
     if(Output < millis() - windowStartTime){
-      if(cur_speed_freq >= set_speed_freq){
-        digitalWrite(RELAY_DOWN, HIGH);
-        digitalWrite(RELAY_UP, LOW);
+      Serial.println("Arrived at change output");
+      if(cur_speed_freq > set_speed_freq + (0.01 * set_speed_freq)){
+        digitalWrite(motor_down, HIGH);
+        digitalWrite(motor_up, LOW);
+      } else if (cur_speed_freq < set_speed_freq - (0.01 * set_speed_freq)){
+        digitalWrite(motor_down, LOW);
+        digitalWrite(motor_up, HIGH);
       } else{
-        digitalWrite(RELAY_DOWN, LOW);
-        digitalWrite(RELAY_UP, HIGH);
+        digitalWrite(motor_down, LOW);
+        digitalWrite(motor_up, LOW);
       }
     }
 
   }
+  //delay(500);
 }
 
+// double getCurrentFreq(){
+//   int sum = 0;
+//   int count = 0;
+//   unsigned long refTime = millis();
+//   unsigned long nwTime = 0;
+//   while(nwTime < refTime + 800){
+//     if(FreqMeasure.available()){
+//       while(count < 30){
+//         sum += FreqMeasure.read();
+//         count++;
+//         //delay(5);
+//       }
+//       return FreqMeasure.countToFrequency(sum / count);
+//     } else{
+//       nwTime = millis();
+//     }
+//   }
+//   return 0;
+// }
+
 double getCurrentFreq(){
-  int sum = 0;
-  int count = 0;
-  unsigned long refTime = millis();
-  unsigned long nwTime = 0;
-  while(nwTime < refTime + 800){
-    if(FreqMeasure.available()){
-      while(count < 30){
-        sum += FreqMeasure.read();
-        count++;
-        delay(5);
-      }
-      return FreqMeasure.countToFrequency(sum / count);
-    } else{
-      nwTime = millis();
+  double sum=0;
+  int count=0;
+  while(1){
+    if (FreqMeasure.available()) {
+    // average several reading together
+    sum = sum + FreqMeasure.read();
+    count = count + 1;
+    if (count > 30) {
+      float frequency = FreqMeasure.countToFrequency(sum / count);
+      Serial.println(frequency);
+      sum = 0;
+      count = 0;
+      return frequency;
+    }
     }
   }
-  return 0;
 }
 
 void resume(){    //re-enables clutches (Havent tested this yet)
