@@ -1,3 +1,8 @@
+//Startup code for arduino cruise control module Porsche 944
+//see wiring pinout at https://rennlist.com/forums/944-and-944s-forum/1180331-cruise-control-saga.html
+//Written by: John H.
+
+//USE AT YOUR OWN RISK
 
 #include <FreqMeasure.h>
 #include <PID_v1.h>
@@ -23,7 +28,7 @@ int pot_2 = 29;
 int motor_up = 31;
 int motor_down = 33;
 
-//speed information in hz(?)
+//speed information in hz
 double set_speed_freq = 0;
 double cur_speed_freq = 0;
 
@@ -32,6 +37,7 @@ bool canceled = true; //system "power switch"
 bool clutch_pressed = false;
 double speed_range = 0.04;
 
+//PID Controller
 //Define Variables we'll be connecting to
 double Setpoint, Input, Output;
 
@@ -81,7 +87,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(brake_signal), cancel, RISING);
   attachInterrupt(digitalPinToInterrupt(cancel_signal), cancel, FALLING);
   attachInterrupt(digitalPinToInterrupt(resume_signal), resume, RISING);
-  attachInterrupt(digitalPinToInterrupt(clutch_signal), cancel, RISING);
+  attachInterrupt(digitalPinToInterrupt(clutch_signal), clutchCheck, RISING);
 
 }
 
@@ -100,7 +106,7 @@ void loop() {
     //enables servo (not sure how this works yet)
     digitalWrite(clutch_1, HIGH);
     digitalWrite(clutch_2, HIGH);
-    Serial.println("Running");
+    //Serial.println("Running");
     cur_speed_freq = getCurrentFreq();
     Input = cur_speed_freq;
     Serial.println(Input);
@@ -120,7 +126,7 @@ void loop() {
   cancel_signal_state = digitalRead(cancel_signal);
   if (cancel_signal_state == LOW){    //checks for cancel button being pressed
     Serial.println("Cancel Button Pressed");
-    cancel(116);
+    cancel();
   }
 
   resume_signal_state = digitalRead(resume_signal);
@@ -132,21 +138,11 @@ void loop() {
   brake_signal_state = digitalRead(brake_signal);
   if (brake_signal_state == HIGH){    //checks for brake pedal being pressed
     Serial.println("Brake Pressed");
-    cancel(128);
+    cancel();
   }
 
   clutch_signal_state = digitalRead(clutch_signal);
-  if (clutch_signal_state == HIGH){     //checks for clutch pedal being pressed
-    Serial.println("Clutch Pressed");
-    cancel(133);
-    clutch_pressed = true;
-  }
-
-  if(clutch_signal_state == LOW && clutch_pressed){
-    Serial.println("Clutch no longer pressed");
-    clutch_pressed = false;
-    resume();
-  }
+  clutchCheck();
 
   if(myPID.GetMode() == AUTOMATIC){
     myPID.Compute();
@@ -155,7 +151,7 @@ void loop() {
       windowStartTime += WindowSize;
     }
     if(Output < millis() - windowStartTime){
-      Serial.println("Arrived at change output");
+      //Serial.println("Arrived at change output");
       if(cur_speed_freq > set_speed_freq + (0.01 * set_speed_freq)){
         digitalWrite(motor_down, HIGH);
         digitalWrite(motor_up, LOW);
@@ -182,7 +178,7 @@ double getCurrentFreq(){
     count = count + 1;
     if (count > 30) {
       float frequency = FreqMeasure.countToFrequency(sum / count);
-      Serial.println(frequency);
+      //Serial.println(frequency);
       sum = 0;
       count = 0;
       return frequency;
@@ -198,7 +194,21 @@ void resume(){    //re-enables clutches (Havent tested this yet)
   canceled = false;
 }
 
-void cancel(int lineNum){ //Disables all outputs and sets canceled to true
+void clutchCheck(){
+  if (clutch_signal_state == HIGH){     //checks for clutch pedal being pressed
+    Serial.println("Clutch Pressed");
+    cancel();
+    clutch_pressed = true;
+  }
+
+  if(clutch_signal_state == LOW && clutch_pressed){
+    Serial.println("Clutch no longer pressed");
+    clutch_pressed = false;
+    resume();
+  }
+}
+
+void cancel(){ //Disables all outputs and sets canceled to true
   //Serial.print("Canceling: Line ");
   //Serial.println(lineNum);
   digitalWrite(clutch_1, LOW);
@@ -207,6 +217,6 @@ void cancel(int lineNum){ //Disables all outputs and sets canceled to true
   digitalWrite(pot_2, LOW);
   digitalWrite(motor_up, LOW);
   digitalWrite(motor_down, LOW);
-  myPID.SetMode(AUTOMATIC);
+  myPID.SetMode(0);
   canceled = true;
 }
