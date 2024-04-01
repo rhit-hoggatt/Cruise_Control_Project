@@ -165,7 +165,7 @@ void loop() {
     }
 
   }
-  //delay(500);
+  //delay(500);   //timing test
 }
 
 double getCurrentFreq(){
@@ -173,16 +173,16 @@ double getCurrentFreq(){
   int count=0;
   while(1){
     if (FreqMeasure.available()) {
-    // average several reading together
-    sum = sum + FreqMeasure.read();
-    count = count + 1;
-    if (count > 30) {
-      float frequency = FreqMeasure.countToFrequency(sum / count);
-      //Serial.println(frequency);
-      sum = 0;
-      count = 0;
-      return frequency;
-    }
+      // average several reading together
+      sum = sum + FreqMeasure.read();
+      count = count + 1;
+      if (count > 30) {
+        float frequency = FreqMeasure.countToFrequency(sum / count);
+        //Serial.println(frequency);
+        sum = 0;
+        count = 0;
+        return frequency;
+      }
     }
   }
 }
