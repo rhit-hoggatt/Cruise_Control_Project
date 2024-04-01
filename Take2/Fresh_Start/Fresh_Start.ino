@@ -3,21 +3,21 @@
 #include <PID_v1.h>
 
 //Inputs
-int speed_signal = 8;     //analog signal (sinusoid) requires pin 49 for FreqCount lib (pin 8 for UNO)--- pin 3 for FreqPeriodCounter
-int brake_signal = 15;      //0v when off 12v when brake pressed (A1)
+int speed_signal = 49;     //analog signal (sinusoid) requires pin 49 for FreqCount lib (pin 8 for UNO)--- pin 3 for FreqPeriodCounter
+int brake_signal = 3;      //0v when off 12v when brake pressed (A1)
 bool brake_signal_state;
-int cancel_signal = 16;     //12v when off 0v when cancel pressed (A2)
+int cancel_signal = 2;     //12v when off 0v when cancel pressed (A2)
 bool cancel_signal_state;
-int resume_signal = 11;     //0v until 12v when resume pressed
+int resume_signal = 19;     //0v until 12v when resume pressed
 bool resume_signal_state;
-int set_signal = 10;        //0v until 12v when pressed
+int set_signal = 20;        //0v until 12v when pressed
 bool set_signal_state;
-int clutch_signal = 9;     //0v until 12v when clutch pressed
+int clutch_signal = 18;     //0v until 12v when clutch pressed
 bool clutch_signal_state;
 
 //Outputs (not sure how these work yet)
-int clutch_1 = 23;   //First of two safety magnetic clutches in servo
-int clutch_2 = 25;   //Second of two saferty magnetic clutches in servo
+int clutch_1 = 23;   //First of two safety magnetic clutches in servo (?)
+int clutch_2 = 25;   //Second of two saferty magnetic clutches in servo (?)
 int pot_1 = 27;
 int pot_2 = 29;
 int motor_up = 31;
@@ -30,7 +30,7 @@ double cur_speed_freq = 0;
 //other
 bool canceled = true; //system "power switch"
 bool clutch_pressed = false;
-double speed_range = 0.02;
+double speed_range = 0.04;
 
 //Define Variables we'll be connecting to
 double Setpoint, Input, Output;
@@ -76,6 +76,12 @@ void setup() {
   pinMode(pot_2, OUTPUT);
   pinMode(motor_up, OUTPUT);
   pinMode(motor_down, OUTPUT);
+
+  //define interrupts
+  attachInterrupt(digitalPinToInterrupt(brake_signal), cancel, RISING);
+  attachInterrupt(digitalPinToInterrupt(cancel_signal), cancel, FALLING);
+  attachInterrupt(digitalPinToInterrupt(resume_signal), resume, RISING);
+  attachInterrupt(digitalPinToInterrupt(clutch_signal), cancel, RISING);
 
 }
 
@@ -166,26 +172,6 @@ void loop() {
   //delay(500);
 }
 
-// double getCurrentFreq(){
-//   int sum = 0;
-//   int count = 0;
-//   unsigned long refTime = millis();
-//   unsigned long nwTime = 0;
-//   while(nwTime < refTime + 800){
-//     if(FreqMeasure.available()){
-//       while(count < 30){
-//         sum += FreqMeasure.read();
-//         count++;
-//         //delay(5);
-//       }
-//       return FreqMeasure.countToFrequency(sum / count);
-//     } else{
-//       nwTime = millis();
-//     }
-//   }
-//   return 0;
-// }
-
 double getCurrentFreq(){
   double sum=0;
   int count=0;
@@ -213,26 +199,14 @@ void resume(){    //re-enables clutches (Havent tested this yet)
 }
 
 void cancel(int lineNum){ //Disables all outputs and sets canceled to true
-  Serial.print("Canceling: Line ");
-  Serial.println(lineNum);
+  //Serial.print("Canceling: Line ");
+  //Serial.println(lineNum);
   digitalWrite(clutch_1, LOW);
   digitalWrite(clutch_2, LOW);
   digitalWrite(pot_1, LOW);
   digitalWrite(pot_2, LOW);
   digitalWrite(motor_up, LOW);
   digitalWrite(motor_down, LOW);
-  myPID.SetMode(0);
+  myPID.SetMode(AUTOMATIC);
   canceled = true;
 }
-
-// void speed_up(){
-//   digitalWrite(motor_up, HIGH);
-//   delay(50);
-//   digitalWrite(motor_up, LOW);
-// }
-
-// void slow_down(){
-//   digitalWrite(motor_down, HIGH);
-//   delay(50);
-//   digitalWrite(motor_down, LOW);
-// }
