@@ -21,12 +21,14 @@ int clutch_signal = 18;     //0v until 12v when clutch pressed
 bool clutch_signal_state;
 
 //Outputs (not sure how these work yet)
-int clutch_1 = 23;   //First of two safety magnetic clutches in servo (?)
-int clutch_2 = 25;   //Second of two saferty magnetic clutches in servo (?)
+int clutch_1 = 35;   //First of two safety magnetic clutches in servo (?)
+int clutch_2 = 37;   //Second of two saferty magnetic clutches in servo (?)
 int pot_1 = 27;
 int pot_2 = 29;
 int motor_up = 31;
 int motor_down = 33;
+
+int mains = 23;
 
 //speed information in hz
 double set_speed_freq = 0;
@@ -82,6 +84,7 @@ void setup() {
   pinMode(pot_2, OUTPUT);
   pinMode(motor_up, OUTPUT);
   pinMode(motor_down, OUTPUT);
+  pinMode(mains, OUTPUT);
 
   //define interrupts
   attachInterrupt(digitalPinToInterrupt(brake_signal), cancel, RISING);
@@ -100,6 +103,7 @@ void loop() {
     Setpoint = set_speed_freq;
     cur_speed_freq = set_speed_freq;
     myPID.SetMode(AUTOMATIC);
+    digitalWrite(mains, HIGH);
   }
 
   if(set_speed_freq != 0 && canceled == false) {     //checks to see if cruise has been set
@@ -188,6 +192,7 @@ double getCurrentFreq(){
 }
 
 void resume(){    //re-enables clutches (Havent tested this yet)
+  digitalWrite(mains, HIGH);
   digitalWrite(clutch_1, HIGH);
   digitalWrite(clutch_2, HIGH);
   myPID.SetMode(AUTOMATIC);
@@ -211,6 +216,7 @@ void clutchCheck(){
 void cancel(){ //Disables all outputs and sets canceled to true
   //Serial.print("Canceling: Line ");
   //Serial.println(lineNum);
+  digitalWrite(mains, LOW);
   digitalWrite(clutch_1, LOW);
   digitalWrite(clutch_2, LOW);
   digitalWrite(pot_1, LOW);
