@@ -103,13 +103,13 @@ void loop() {
     Setpoint = set_speed_freq;
     cur_speed_freq = set_speed_freq;
     myPID.SetMode(AUTOMATIC);
-    digitalWrite(mains, HIGH);
+    digitalWrite(mains, LOW);
   }
 
   if(set_speed_freq != 0 && canceled == false) {     //checks to see if cruise has been set
     //enables servo (not sure how this works yet)
-    digitalWrite(clutch_1, HIGH);
-    digitalWrite(clutch_2, HIGH);
+    digitalWrite(clutch_1, LOW);
+    digitalWrite(clutch_2, LOW);
     //Serial.println("Running");
     cur_speed_freq = getCurrentFreq();
     Input = cur_speed_freq;
@@ -157,14 +157,14 @@ void loop() {
     if(Output < millis() - windowStartTime){
       //Serial.println("Arrived at change output");
       if(cur_speed_freq > set_speed_freq + (0.01 * set_speed_freq)){
-        digitalWrite(motor_down, HIGH);
-        digitalWrite(motor_up, LOW);
-      } else if (cur_speed_freq < set_speed_freq - (0.01 * set_speed_freq)){
         digitalWrite(motor_down, LOW);
         digitalWrite(motor_up, HIGH);
-      } else{
-        digitalWrite(motor_down, LOW);
+      } else if (cur_speed_freq < set_speed_freq - (0.01 * set_speed_freq)){
+        digitalWrite(motor_down, HIGH);
         digitalWrite(motor_up, LOW);
+      } else{
+        digitalWrite(motor_down, HIGH);
+        digitalWrite(motor_up, HIGH);
       }
     }
 
@@ -192,9 +192,9 @@ double getCurrentFreq(){
 }
 
 void resume(){    //re-enables clutches (Havent tested this yet)
-  digitalWrite(mains, HIGH);
-  digitalWrite(clutch_1, HIGH);
-  digitalWrite(clutch_2, HIGH);
+  digitalWrite(mains, LOW);
+  digitalWrite(clutch_1, LOW);
+  digitalWrite(clutch_2, LOW);
   myPID.SetMode(AUTOMATIC);
   canceled = false;
 }
@@ -216,13 +216,13 @@ void clutchCheck(){
 void cancel(){ //Disables all outputs and sets canceled to true
   //Serial.print("Canceling: Line ");
   //Serial.println(lineNum);
-  digitalWrite(mains, LOW);
-  digitalWrite(clutch_1, LOW);
-  digitalWrite(clutch_2, LOW);
-  digitalWrite(pot_1, LOW);
-  digitalWrite(pot_2, LOW);
-  digitalWrite(motor_up, LOW);
-  digitalWrite(motor_down, LOW);
+  digitalWrite(mains, HIGH);
+  digitalWrite(clutch_1, HIGH);
+  digitalWrite(clutch_2, HIGH);
+  digitalWrite(pot_1, HIGH);
+  digitalWrite(pot_2, HIGH);
+  digitalWrite(motor_up, HIGH);
+  digitalWrite(motor_down, HIGH);
   myPID.SetMode(0);
   canceled = true;
 }
