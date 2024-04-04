@@ -92,9 +92,14 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(resume_signal), resume, RISING);
   attachInterrupt(digitalPinToInterrupt(clutch_signal), clutchCheck, RISING);
 
+  cancel();
+
 }
 
 void loop() {
+  //Serial.print("state of in 49: ");
+  //Serial.println(digitalRead(49));
+
   set_signal_state = digitalRead(set_signal);
   if(set_signal_state == HIGH){           //checks if set button is pressed
     Serial.println("Set Button Pressed");
@@ -134,7 +139,7 @@ void loop() {
   }
 
   resume_signal_state = digitalRead(resume_signal);
-  if (resume_signal_state == HIGH){     //checks for resume button being pressed
+  if (resume_signal_state == HIGH && set_speed_freq != 0){     //checks for resume button being pressed
     Serial.println("Resume Button Pressed");
     resume();
   }
@@ -173,6 +178,7 @@ void loop() {
 }
 
 double getCurrentFreq(){
+  int strtTime = millis();
   double sum=0;
   int count=0;
   while(1){
@@ -182,11 +188,15 @@ double getCurrentFreq(){
       count = count + 1;
       if (count > 30) {
         float frequency = FreqMeasure.countToFrequency(sum / count);
-        //Serial.println(frequency);
+        Serial.println(frequency);
         sum = 0;
         count = 0;
         return frequency;
       }
+    }
+    if(millis() > strtTime + 1000){
+      printf("No Freq");
+      return 0;
     }
   }
 }
