@@ -7,8 +7,15 @@
 #include <FreqMeasure.h>
 #include <PID_v1.h>
 
+//*******user input control*********//
+//                                  //
+//        Set 1 for control         //
+//                                  //
+//**********************************//
+static int USER_INPUT = 0;
+
 //Inputs
-int speed_signal = 49;     //analog signal (sinusoid) requires pin 49 for FreqCount lib (pin 8 for UNO)--- pin 3 for FreqPeriodCounter
+int speed_signal = 49;     //analog signal (sinusoid) requires pin 49 for FreqCount lib (pin 8 for UNO)
 int brake_signal = 3;      //0v when off 12v when brake pressed (A1)
 bool brake_signal_state;
 int cancel_signal = 2;     //12v when off 0v when cancel pressed (A2)
@@ -94,6 +101,10 @@ void setup() {
 
   cancel();
 
+  if(USER_INPUT){
+    userInput();
+  }
+
 }
 
 void loop() {
@@ -111,14 +122,14 @@ void loop() {
     digitalWrite(mains, LOW);
   }
 
-  if(set_speed_freq != 0 && canceled == false) {     //checks to see if cruise has been set
+  if(set_speed_freq != -1 && canceled == false) {     //checks to see if cruise has been set
     //enables servo (not sure how this works yet)
     digitalWrite(clutch_1, LOW);
     digitalWrite(clutch_2, LOW);
     //Serial.println("Running");
     cur_speed_freq = getCurrentFreq();
     Input = cur_speed_freq;
-    Serial.println(Input);
+    //Serial.println(Input);
 
     if (cur_speed_freq > (set_speed_freq + (speed_range * set_speed_freq))){  //if current speed is above a predefined offset of set speed
       //slow_down();
@@ -178,6 +189,7 @@ void loop() {
 }
 
 double getCurrentFreq(){
+  Serial.println("Reading speed");
   int strtTime = millis();
   double sum=0;
   int count=0;
@@ -194,8 +206,8 @@ double getCurrentFreq(){
         return frequency;
       }
     }
-    if(millis() > strtTime + 1000){
-      printf("No Freq");
+    if(millis() > strtTime + 1000){  //One second with no freq reading
+      Serial.println("No Freq");
       return 0;
     }
   }
@@ -235,4 +247,23 @@ void cancel(){ //Disables all outputs and sets canceled to true
   digitalWrite(motor_down, HIGH);
   myPID.SetMode(0);
   canceled = true;
+}
+
+void userInput(){
+  String input = Serial.readString();
+  if(input.equals("motor up")){
+    digitalWrite(motor_up, LOW);
+  } else if(input.equals("motor down")){
+    digitalWrite(motor_down, LOW);
+  } else if(input.equals("clutch on")){
+    digitalWrite(clutch_1, LOW);
+    digitalWrite(clutch_2, LOW);
+  } else if(input.equals("clutch off")){
+    digitalWrite(clutch_1, HIGH);
+    digitalWrite(clutch_2, HIGH);
+  } else{
+    digitalWrite(motor_up, HIGH);
+    digitalWrite(motor_down, HIGH);
+    Serial.println("Invalid Input");
+  }
 }
