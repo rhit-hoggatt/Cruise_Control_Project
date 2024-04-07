@@ -189,7 +189,7 @@ void loop() {
 }
 
 double getCurrentFreq(){
-  Serial.println("Reading speed");
+  //Serial.println("Reading speed");
   int strtTime = millis();
   double sum=0;
   int count=0;
@@ -206,8 +206,8 @@ double getCurrentFreq(){
         return frequency;
       }
     }
-    if(millis() > strtTime + 1000){  //One second with no freq reading
-      Serial.println("No Freq");
+    else if(millis() > strtTime + 1000){  //One second with no freq reading
+      //Serial.println("No Freq");
       return 0;
     }
   }
@@ -222,6 +222,7 @@ void resume(){    //re-enables clutches (Havent tested this yet)
 }
 
 void clutchCheck(){
+  //Serial.println("checking clutch");
   if (clutch_signal_state == HIGH){     //checks for clutch pedal being pressed
     Serial.println("Clutch Pressed");
     cancel();
