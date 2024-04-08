@@ -111,6 +111,9 @@ void loop() {
   //Serial.print("state of in 49: ");
   //Serial.println(digitalRead(49));
 
+  // Serial.print("Speed: ");
+  // Serial.println(getCurrentFreq());
+
   set_signal_state = digitalRead(set_signal);
   if(set_signal_state == HIGH){           //checks if set button is pressed
     Serial.println("Set Button Pressed");
@@ -122,7 +125,7 @@ void loop() {
     digitalWrite(mains, LOW);
   }
 
-  if(set_speed_freq != -1 && canceled == false) {     //checks to see if cruise has been set
+  if(set_speed_freq != 0 && canceled == false) {     //checks to see if cruise has been set
     //enables servo (not sure how this works yet)
     digitalWrite(clutch_1, LOW);
     digitalWrite(clutch_2, LOW);
