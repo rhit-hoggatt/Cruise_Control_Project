@@ -36,7 +36,7 @@ bool clutch_signal_state;
 // int motor_up = 31;
 // int motor_down = 33;
 
-int servoPin = 27;
+int servoPin = 53;
 Servo myServo;
 
 int mains = 23;

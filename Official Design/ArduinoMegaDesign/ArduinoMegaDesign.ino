@@ -63,6 +63,7 @@ PID myPID(&Input, &Output, &Setpoint, consKp, consKi, consKd, DIRECT);
 
 void setup() {
   Serial.begin(57600);
+  //Serial1.begin(9600);
   Serial.println("Started Setup");
 
   //Frequency measuring setup
@@ -166,7 +167,6 @@ void loop() {
     cancel();
   }
 
-  clutch_signal_state = digitalRead(clutch_signal);
   clutchCheck();
 
   if(myPID.GetMode() == AUTOMATIC){
@@ -229,7 +229,9 @@ void resume(){    //re-enables clutches (Havent tested this yet)
 }
 
 void clutchCheck(){
-  //Serial.println("checking clutch");
+  clutch_signal_state = digitalRead(clutch_signal);
+  //Serial.print("checking clutch ");
+  //Serial.println(clutch_signal_state);
   if (clutch_signal_state == HIGH){     //checks for clutch pedal being pressed
     Serial.println("Clutch Pressed");
     cancel();
